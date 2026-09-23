@@ -1,0 +1,6 @@
+codigo_serie,nome,descricao,unidade,periodicidade
+432,selic_meta,Meta da taxa Selic definida pelo Copom,% a.a.,diaria
+1,dolar_ptax,Dólar comercial (PTAX) - venda,R$,diaria
+433,ipca_mensal,IPCA - variação mensal,% a.m.,mensal
+13522,ipca_12m,IPCA - acumulado em 12 meses,%,mensal
+24369,desocupacao,Taxa de desocupação (PNAD Contínua),%,mensal

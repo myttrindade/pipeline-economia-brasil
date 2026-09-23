@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economia do Brasil em Dados</title>
+<meta name="description" content="Selic, inflação, juro real, dólar e desemprego atualizados todo dia a partir da API do Banco Central.">
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --muted:#6f6d68;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --accent:#2a78d6;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#9a988f;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#9a988f;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --accent:#3987e5;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 16px 48px;}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+h1{font-size:clamp(1.5rem,3.5vw,2.1rem);letter-spacing:-.02em;line-height:1.15;}
+.sub{color:var(--ink-2);margin-top:4px;max-width:60ch;}
+.meta{color:var(--muted);font-size:.85rem;text-align:right;}
+.meta a{color:var(--ink-2);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+.kpi .lbl{color:var(--ink-2);font-size:.85rem;}
+.kpi .val{font-size:1.75rem;font-weight:650;letter-spacing:-.02em;margin:2px 0;}
+.kpi .dl{color:var(--muted);font-size:.8rem;}
+.kpi .dl b{color:var(--ink-2);font-weight:600;}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin:24px 0 12px;}
+.bar h2{font-size:1.1rem;}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--surface);}
+.seg button{border:0;background:none;color:var(--ink-2);font:inherit;font-size:.85rem;padding:6px 14px;border-radius:999px;cursor:pointer;}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.chart h3{font-size:.95rem;}
+.chart p{color:var(--muted);font-size:.8rem;margin-bottom:8px;}
+.legend{display:flex;gap:16px;font-size:.8rem;color:var(--ink-2);margin-bottom:6px;}
+.legend i{display:inline-block;width:14px;height:2px;border-radius:2px;vertical-align:middle;margin-right:6px;}
+.box{position:relative;height:260px;}
+table{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums;}
+th,td{padding:8px 10px;border-bottom:1px solid var(--grid);text-align:right;}
+th:first-child,td:first-child{text-align:left;}
+th{color:var(--ink-2);font-weight:600;font-size:.8rem;}
+.tbl{overflow-x:auto;}
+details{margin-top:12px;}
+summary{cursor:pointer;color:var(--ink-2);font-size:.9rem;}
+details .tbl{max-height:420px;margin-top:8px;}
+footer{margin-top:32px;color:var(--muted);font-size:.8rem;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;}
+footer a{color:var(--ink-2);}
+@media (max-width:760px){.charts{grid-template-columns:1fr}.meta{text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Economia do Brasil em Dados</h1>
+      <p class="sub">Selic, inflação, juro real, dólar e desemprego, atualizados todo dia a partir da API do Banco Central.</p>
+    </div>
+    <div class="meta">Atualizado em <span id="atualizado"></span><br><a href="dados/indicadores_mensais.csv" download>Baixar dados (CSV)</a></div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Indicadores mais recentes"></section>
+
+  <div class="bar">
+    <h2>Evolução</h2>
+    <div class="seg" role="group" aria-label="Período">
+      <button data-anos="5" aria-pressed="true">5 anos</button>
+      <button data-anos="10" aria-pressed="false">10 anos</button>
+      <button data-anos="0" aria-pressed="false">Desde 2012</button>
+    </div>
+  </div>
+
+  <section class="charts">
+    <div class="card chart">
+      <h3>Selic x inflação</h3>
+      <p>Meta Selic no fim do mês e IPCA acumulado em 12 meses (%)</p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Selic</span><span><i style="background:var(--s2)"></i>IPCA 12 meses</span></div>
+      <div class="box"><canvas id="c-selic" aria-label="Gráfico de linhas da Selic e do IPCA 12 meses"></canvas></div>
+    </div>
+    <div class="card chart">
+      <h3>Juro real</h3>
+      <p>Selic descontada da inflação dos últimos 12 meses (%)</p>
+      <div class="box"><canvas id="c-juro" aria-label="Gráfico de linha do juro real"></canvas></div>
+    </div>
+    <div class="card chart">
+      <h3>Dólar</h3>
+      <p>Média mensal da PTAX de venda (R$)</p>
+      <div class="box"><canvas id="c-dolar" aria-label="Gráfico de linha do dólar"></canvas></div>
+    </div>
+    <div class="card chart">
+      <h3>Desemprego</h3>
+      <p>Taxa de desocupação, PNAD Contínua (%)</p>
+      <div class="box"><canvas id="c-desemprego" aria-label="Gráfico de linha da taxa de desocupação"></canvas></div>
+    </div>
+  </section>
+
+  <div class="bar"><h2>Últimas decisões do Copom</h2></div>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Vigência</th><th>Selic anterior</th><th>Nova Selic</th><th>Variação</th></tr></thead>
+      <tbody id="copom"></tbody>
+    </table>
+  </div>
+
+  <details class="card">
+    <summary>Ver tabela com todos os meses</summary>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Mês</th><th>Selic</th><th>IPCA mês</th><th>IPCA 12m</th><th>Juro real</th><th>Dólar</th><th>Desemprego</th></tr></thead>
+        <tbody id="mensal"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <footer>
+    <span>Fonte: Banco Central do Brasil, Sistema Gerenciador de Séries Temporais (SGS). Séries 432, 433, 13522, 1 e 24369.</span>
+    <span>Pipeline: Python · DuckDB · dbt · GitHub Actions</span>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const DADOS = /*__DADOS__*/null;
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const rotuloMes = iso => { const [a, m] = iso.split('-'); return `${MESES[+m - 1]}/${a.slice(2)}`; };
+const num = (v, casas = 2) => v == null ? '–' : v.toLocaleString('pt-BR', {minimumFractionDigits: casas, maximumFractionDigits: casas});
+const pct = (v, casas = 2) => v == null ? '–' : `${num(v, casas)}%`;
+const sinal = v => (v > 0 ? '▲ +' : v < 0 ? '▼ ' : '') + num(v);
+
+const mensal = DADOS.mensal;
+document.getElementById('atualizado').textContent =
+  new Date(DADOS.gerado_em).toLocaleString('pt-BR', {dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Sao_Paulo'});
+
+// ---------- KPIs: último valor disponível de cada série, comparado a 12 meses antes ----------
+function ultimo(campo) {
+  for (let i = mensal.length - 1; i >= 0; i--) if (mensal[i][campo] != null) return i;
+  return -1;
+}
+function kpi(rotulo, campo, fmt, unidadeDelta) {
+  const i = ultimo(campo), r = mensal[i], ant = mensal[i - 12];
+  const delta = ant && ant[campo] != null ? r[campo] - ant[campo] : null;
+  return `<div class="card kpi">
+    <div class="lbl">${rotulo}</div>
+    <div class="val">${fmt(r[campo])}</div>
+    <div class="dl">${rotuloMes(r.mes)}${delta == null ? '' : ` · <b>${sinal(delta)}${unidadeDelta}</b> em 12 meses`}</div>
+  </div>`;
+}
+document.getElementById('kpis').innerHTML = [
+  kpi('Selic (meta)', 'selic_meta', v => pct(v), ' p.p.'),
+  kpi('IPCA 12 meses', 'ipca_12m', v => pct(v), ' p.p.'),
+  kpi('Juro real', 'juro_real', v => pct(v), ' p.p.'),
+  kpi('Dólar (média do mês)', 'dolar_medio', v => `R$ ${num(v)}`, ''),
+  kpi('Desemprego', 'desocupacao', v => pct(v, 1), ' p.p.'),
+].join('');
+
+// ---------- Tabelas ----------
+document.getElementById('copom').innerHTML = DADOS.copom.slice(-10).reverse().map(d => `
+  <tr><td>${new Date(d.data_vigencia + 'T12:00').toLocaleDateString('pt-BR')}</td>
+  <td>${pct(d.selic_anterior)}</td><td>${pct(d.selic_nova)}</td>
+  <td>${d.variacao_pp > 0 ? '▲ +' : '▼ '}${num(d.variacao_pp)} p.p. (${d.direcao})</td></tr>`).join('');
+document.getElementById('mensal').innerHTML = mensal.slice().reverse().map(r => `
+  <tr><td>${rotuloMes(r.mes)}</td><td>${pct(r.selic_meta)}</td><td>${pct(r.ipca_mensal)}</td><td>${pct(r.ipca_12m)}</td>
+  <td>${pct(r.juro_real)}</td><td>${r.dolar_medio == null ? '–' : 'R$ ' + num(r.dolar_medio)}</td><td>${pct(r.desocupacao, 1)}</td></tr>`).join('');
+
+// ---------- Gráficos ----------
+const crosshair = {
+  id: 'crosshair',
+  afterDatasetsDraw(chart) {
+    const a = chart.tooltip && chart.tooltip.getActiveElements();
+    if (!a || !a.length) return;
+    const x = a[0].element.x, {top, bottom} = chart.chartArea, ctx = chart.ctx;
+    ctx.save(); ctx.strokeStyle = css('--axis'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke(); ctx.restore();
+  }
+};
+
+function opcoes(fmtY, zero) {
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: {mode: 'index', intersect: false},
+    elements: {point: {radius: 0, hoverRadius: 5, hitRadius: 12}, line: {borderWidth: 2, tension: 0}},
+    plugins: {
+      legend: {display: false},
+      tooltip: {
+        backgroundColor: css('--surface'), titleColor: css('--ink'), bodyColor: css('--ink-2'),
+        borderColor: css('--border'), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+        callbacks: {label: c => ` ${c.dataset.label}: ${fmtY(c.parsed.y)}`}
+      }
+    },
+    scales: {
+      x: {grid: {display: false}, border: {color: css('--axis')},
+          ticks: {color: css('--muted'), maxTicksLimit: 7, maxRotation: 0, autoSkip: true}},
+      y: {grid: {color: ctx => zero && ctx.tick.value === 0 ? css('--axis') : css('--grid')}, border: {display: false},
+          ticks: {color: css('--muted'), maxTicksLimit: 6, callback: fmtY}}
+    }
+  };
+}
+const serie = (label, campo, cor) => ({label, campo, borderColor: css(cor), backgroundColor: css(cor), spanGaps: true, pointStyle: 'circle'});
+
+const graficos = [
+  {id: 'c-selic', fmt: v => pct(v, 1), series: [serie('Selic', 'selic_meta', '--s1'), serie('IPCA 12 meses', 'ipca_12m', '--s2')]},
+  {id: 'c-juro', fmt: v => pct(v, 1), zero: true, series: [serie('Juro real', 'juro_real', '--s1')]},
+  {id: 'c-dolar', fmt: v => 'R$ ' + num(v), series: [serie('Dólar', 'dolar_medio', '--s1')]},
+  {id: 'c-desemprego', fmt: v => pct(v, 1), series: [serie('Desemprego', 'desocupacao', '--s1')]},
+].map(g => ({...g, chart: new Chart(document.getElementById(g.id), {
+  type: 'line', data: {labels: [], datasets: g.series.map(s => ({...s, data: []}))},
+  options: opcoes(g.fmt, g.zero), plugins: [crosshair]
+})}));
+
+function filtrar(anos) {
+  const corte = anos ? mensal.length - anos * 12 : 0;
+  const recorte = mensal.slice(Math.max(0, corte));
+  for (const g of graficos) {
+    g.chart.data.labels = recorte.map(r => rotuloMes(r.mes));
+    g.chart.data.datasets.forEach(d => d.data = recorte.map(r => r[d.campo]));
+    g.chart.update();
+  }
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  filtrar(+b.dataset.anos);
+}));
+filtrar(5);
+</script>
+</body>
+</html>

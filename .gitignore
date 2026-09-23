@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+data/
+site/
+transform/target/
+transform/dbt_packages/
+transform/logs/
+logs/
+transform/.user.yml

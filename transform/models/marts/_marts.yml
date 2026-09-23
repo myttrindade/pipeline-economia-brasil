@@ -1,0 +1,55 @@
+version: 2
+
+models:
+  - name: fct_indicadores_mensais
+    description: >
+      Painel mensal da economia brasileira, uma linha por mês. Base do dashboard.
+    columns:
+      - name: mes
+        description: Primeiro dia do mês de referência.
+        data_tests: [unique, not_null]
+      - name: selic_meta
+        description: Meta Selic (% a.a.) vigente no fim do mês.
+        data_tests:
+          - not_null
+          - entre: {arguments: {minimo: 0, maximo: 50}}
+      - name: ipca_mensal
+        description: Variação do IPCA no mês (%).
+        data_tests:
+          - entre: {arguments: {minimo: -5, maximo: 5}}
+      - name: ipca_12m
+        description: IPCA acumulado em 12 meses (%).
+        data_tests:
+          - entre: {arguments: {minimo: -5, maximo: 30}}
+      - name: juro_real
+        description: Juro real ex-post (%), Selic descontada do IPCA 12 meses.
+      - name: dolar_medio
+        description: Média da PTAX de venda no mês (R$).
+        data_tests:
+          - entre: {arguments: {minimo: 1, maximo: 15}}
+      - name: dolar_fim_mes
+        description: PTAX de venda no último dia útil do mês (R$).
+      - name: dolar_variacao_mensal
+        description: Variação da média do dólar contra o mês anterior (%).
+      - name: desocupacao
+        description: Taxa de desocupação da PNAD Contínua (%), trimestre móvel encerrado no mês.
+        data_tests:
+          - entre: {arguments: {minimo: 0, maximo: 30}}
+      - name: mes_em_andamento
+        description: Verdadeiro para o mês corrente, que ainda está incompleto.
+
+  - name: fct_decisoes_copom
+    description: Uma linha por mudança na meta Selic.
+    columns:
+      - name: data_vigencia
+        data_tests: [unique, not_null]
+      - name: variacao_pp
+        description: Variação em pontos percentuais.
+        data_tests:
+          - not_null
+          - entre: {arguments: {minimo: -3, maximo: 3}}
+      - name: direcao
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [alta, corte]

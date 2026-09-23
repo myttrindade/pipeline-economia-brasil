@@ -1,0 +1,30 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Dados brutos gravados pelo script de extração (extract/bcb_sgs.py).
+    tables:
+      - name: bcb_sgs
+        description: Observações das séries do SGS do Banco Central, uma linha por série e data.
+
+models:
+  - name: stg_bcb__observacoes
+    description: Observações do SGS tipadas, sem duplicatas e com o nome da série.
+    columns:
+      - name: codigo_serie
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('series')
+                field: codigo_serie
+      - name: serie
+        data_tests: [not_null]
+      - name: data
+        data_tests: [not_null]
+      - name: valor
+        data_tests: [not_null]
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "codigo_serie || '-' || data"
