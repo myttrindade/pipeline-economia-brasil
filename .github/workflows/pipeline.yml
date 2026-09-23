@@ -1,0 +1,55 @@
+name: pipeline
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # todo dia às 9h (horário de Brasília)
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Extrair dados do Banco Central
+        run: python extract/bcb_sgs.py
+
+      - name: Transformar e testar (dbt)
+        working-directory: transform
+        run: dbt build --profiles-dir .
+
+      - name: Gerar dashboard
+        run: python dashboard/build.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
